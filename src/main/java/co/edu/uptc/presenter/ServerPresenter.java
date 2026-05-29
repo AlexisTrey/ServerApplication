@@ -163,8 +163,12 @@ public class ServerPresenter implements PresenterInterface {
     }
 
     private void broadcastGameState() {
-        ClientManager.broadcast(MessageParser.toJson(
-                new GameStateDto(model.buildGameState())));
+        String json = MessageParser.toJson(
+                new GameStateDto(model.buildGameState()));
+
+        System.out.println("GAME_STATE -> " + json);
+
+        ClientManager.broadcast(json);
     }
 
     private void checkAllDone() {
