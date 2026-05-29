@@ -10,10 +10,11 @@ import java.nio.charset.StandardCharsets;
 
 public class ClientHandler implements Runnable {
 
-    private final Socket socket;
+    private final Socket             socket;
     private final PresenterInterface presenter;
-    private PrintWriter             writer;
-    private String                  studentCode;
+    private PrintWriter              writer;
+    private String                   studentCode;
+    private boolean                  disconnected = false;
 
     public ClientHandler(Socket socket, PresenterInterface presenter) {
         this.socket    = socket;
@@ -56,12 +57,16 @@ public class ClientHandler implements Runnable {
     }
 
     private void handleDisconnect() {
+        disconnected = true;
         presenter.onPlayerDisconnect(studentCode);
     }
 
     private void cleanup() {
         ClientManager.removeClient(this);
-        presenter.onPlayerDisconnect(studentCode);
+        if (!disconnected) {
+            disconnected = true;
+            presenter.onPlayerDisconnect(studentCode);
+        }
         try { socket.close(); } catch (IOException ignored) {}
     }
 

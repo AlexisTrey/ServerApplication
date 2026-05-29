@@ -37,25 +37,26 @@ public class ServerModel implements ModelInterface {
     }
 
     @Override
-    public boolean processMove(String studentCode, Direction direction) {
+    public MoveResult processMove(String studentCode, Direction direction) {
         Player player = findPlayer(studentCode);
-        if (player == null) return false;
+        if (player == null) return MoveResult.rejected();
+
         Location target = computeTarget(player.getLocation(), direction);
-        if (!isInsideBounds(target))        return false;
-        if (isProtectedZoneViolation(player, target)) return false;
-        Player blocker = findPlayerAtLocation(target);
-        if (blocker != null) {
-            return handleCollision(player, blocker);
+
+        if (!isInsideBounds(target))               return MoveResult.rejected();
+        if (isProtectedZoneViolation(player, target)) return MoveResult.rejected();
+
+        Player occupant = findPlayerAtLocation(target);
+        if (occupant != null) {
+            return handleCollision(player, occupant);
         }
+
         player.setLocation(target);
-        checkArrival(player);
-        return true;
+        return checkArrival(player);
     }
 
     @Override
-    public void setSpeed(int speedMs) {
-        this.speedMs = speedMs;
-    }
+    public void setSpeed(int speedMs) { this.speedMs = speedMs; }
 
     @Override
     public int getSpeed() { return speedMs; }
@@ -81,7 +82,7 @@ public class ServerModel implements ModelInterface {
         synchronized (players) {
             for (Player p : players) {
                 state.add(new PlayerDto(
-                        String.valueOf(p.getShortId()),
+                        p.getStudentCode(),
                         p.getRole().name(),
                         p.getLocation().getCol(),
                         p.getLocation().getRow()));
@@ -95,25 +96,16 @@ public class ServerModel implements ModelInterface {
             for (int i = 0; i < players.size(); i++) {
                 Role role = (i % 2 == 0) ? Role.ATTACKER : Role.DEFENDER;
                 players.get(i).setRole(role);
-                players.get(i).setLocation(buildSpawnLocation(role, i / 2));
                 players.get(i).setProgressCount(0);
+                players.get(i).setLocation(findFreeSpawn(role));
             }
         }
     }
 
-    private Location buildSpawnLocation(Role role, int index) {
-        if (role == Role.ATTACKER) {
-            int col = Utilities.ATK_SPAWN_COL_START + (index % 2);
-            int row = index / 2;
-            return new Location(col, row);
-        }
-        return new Location(Utilities.DEF_SPAWN_COL, index);
-    }
-
     private Location computeTarget(Location loc, Direction dir) {
         return switch (dir) {
-            case UP    -> new Location(loc.getCol(), loc.getRow() - 1);
-            case DOWN  -> new Location(loc.getCol(), loc.getRow() + 1);
+            case UP    -> new Location(loc.getCol(),     loc.getRow() - 1);
+            case DOWN  -> new Location(loc.getCol(),     loc.getRow() + 1);
             case LEFT  -> new Location(loc.getCol() - 1, loc.getRow());
             case RIGHT -> new Location(loc.getCol() + 1, loc.getRow());
         };
@@ -125,7 +117,7 @@ public class ServerModel implements ModelInterface {
     }
 
     private boolean isProtectedZoneViolation(Player player, Location target) {
-        if (player.getRole() == Role.DEFENDER && isAttackerSpawn(target)) return true;
+        if (player.getRole() == Role.DEFENDER && isAttackerSpawn(target))  return true;
         if (player.getRole() == Role.ATTACKER && isAboveBelowCourt(target)) return true;
         return false;
     }
@@ -136,7 +128,7 @@ public class ServerModel implements ModelInterface {
     }
 
     private boolean isAboveBelowCourt(Location loc) {
-        boolean inCourtCols = loc.getCol() >= Utilities.COURT_COL_START
+        boolean inCourtCols    = loc.getCol() >= Utilities.COURT_COL_START
                 && loc.getCol() <= Utilities.COURT_COL_END;
         boolean outsideCourtRows = loc.getRow() < Utilities.COURT_ROW_START
                 || loc.getRow() > Utilities.COURT_ROW_END;
@@ -149,29 +141,28 @@ public class ServerModel implements ModelInterface {
                 .findFirst().orElse(null);
     }
 
-    private boolean handleCollision(Player mover, Player other) {
-        if (mover.getRole() == Role.ATTACKER && other.getRole() == Role.DEFENDER) {
+    private MoveResult handleCollision(Player mover, Player occupant) {
+        if (mover.getRole() == Role.ATTACKER && occupant.getRole() == Role.DEFENDER) {
             returnToSpawn(mover);
-            other.setProgressCount(other.getProgressCount() + 1);
-            checkRoleChange(other);
-            return false;
+            occupant.setScore(occupant.getScore() + 1);
+            occupant.setProgressCount(occupant.getProgressCount() + 1);
+            boolean roleChanged = checkRoleChange(occupant);
+            return MoveResult.block(mover.getStudentCode(),
+                    occupant.getStudentCode(),
+                    roleChanged);
         }
-        return false;
+        return MoveResult.rejected();
     }
 
-    private void returnToSpawn(Player player) {
-        int index = players.indexOf(player);
-        player.setLocation(buildSpawnLocation(player.getRole(), index / 2));
-        player.setProgressCount(0);
-    }
+    private MoveResult checkArrival(Player player) {
+        if (player.getRole() != Role.ATTACKER)       return MoveResult.moved();
+        if (!isInsideCourt(player.getLocation()))    return MoveResult.moved();
 
-    private void checkArrival(Player player) {
-        if (player.getRole() != Role.ATTACKER) return;
-        if (!isInsideCourt(player.getLocation())) return;
         player.setScore(player.getScore() + 1);
         player.setProgressCount(player.getProgressCount() + 1);
         returnToSpawn(player);
-        checkRoleChange(player);
+        boolean roleChanged = checkRoleChange(player);
+        return MoveResult.goal(player.getStudentCode(), roleChanged);
     }
 
     private boolean isInsideCourt(Location loc) {
@@ -181,14 +172,28 @@ public class ServerModel implements ModelInterface {
                 && loc.getRow() <= Utilities.COURT_ROW_END;
     }
 
-    private void checkRoleChange(Player player) {
-        if (player.getProgressCount() >= Utilities.ROLE_CHANGE_COUNT) {
-            Role newRole = (player.getRole() == Role.ATTACKER)
-                    ? Role.DEFENDER : Role.ATTACKER;
-            player.setRole(newRole);
-            player.setProgressCount(0);
-            int index = players.indexOf(player);
-            player.setLocation(buildSpawnLocation(newRole, index / 2));
+    private void returnToSpawn(Player player) {
+        player.setLocation(findFreeSpawn(player.getRole()));
+    }
+
+    private Location findFreeSpawn(Role role) {
+        int col = (role == Role.ATTACKER)
+                ? Utilities.ATK_SPAWN_COL_START
+                : Utilities.DEF_SPAWN_COL;
+        for (int row = 0; row < Utilities.GRID_ROWS; row++) {
+            Location candidate = new Location(col, row);
+            if (findPlayerAtLocation(candidate) == null) return candidate;
         }
+        return new Location(col, 0);
+    }
+
+    private boolean checkRoleChange(Player player) {
+        if (player.getProgressCount() < Utilities.ROLE_CHANGE_COUNT) return false;
+        Role newRole = (player.getRole() == Role.ATTACKER)
+                ? Role.DEFENDER : Role.ATTACKER;
+        player.setRole(newRole);
+        player.setProgressCount(0);
+        player.setLocation(findFreeSpawn(newRole));
+        return true;
     }
 }
