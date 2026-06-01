@@ -63,13 +63,19 @@ public class ServerPresenter implements PresenterInterface {
         }
         if (model.findPlayer(studentCode) != null) {
             handler.sendMessage(MessageParser.toJson(
-                    new ConnectAckDto(false, "Código ya registrado")));
+                    new ConnectAckDto(
+                            false,
+                            "Código ya registrado",
+                            model.getStatus().name())));
             return;
         }
         int shortId = ClientManager.getCount();
         model.addPlayer(new Player(studentCode, shortId));
         handler.sendMessage(MessageParser.toJson(
-                new ConnectAckDto(true, "Bienvenido")));
+                new ConnectAckDto(
+                        true,
+                        "Bienvenido",
+                        model.getStatus().name())));
         refreshView();
     }
 
@@ -192,15 +198,18 @@ public class ServerPresenter implements PresenterInterface {
     }
 
     private void checkAllDone() {
-        if (model.getPlayers().isEmpty())
-            return;
-        boolean allDone = model.getPlayers().stream()
-                .allMatch(p -> p.getScore() >= Utilities.MAX_SCORE);
-        if (allDone) {
+
+        if (model.getPlayers().isEmpty()) {
+
             model.endGame();
-            ClientManager.broadcast(MessageParser.toJson(
-                    new GameEndDto(GameOverReason.ALL_DONE.name())));
+
+            ClientManager.broadcast(
+                    MessageParser.toJson(
+                            new GameEndDto(
+                                    GameOverReason.ALL_DONE.name())));
+
             refreshView();
+            return;
         }
     }
 }

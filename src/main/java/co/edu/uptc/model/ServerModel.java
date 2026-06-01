@@ -100,8 +100,6 @@ public class ServerModel implements ModelInterface {
         return state;
     }
 
-    // ── Inicialización ───────────────────────────────────────────────────
-
     private void assignRolesAndPositions() {
         synchronized (players) {
             for (int i = 0; i < players.size(); i++) {
@@ -112,8 +110,6 @@ public class ServerModel implements ModelInterface {
             }
         }
     }
-
-    // ── Movimiento ───────────────────────────────────────────────────────
 
     private Location computeTarget(Location loc, Movement mov) {
         return switch (mov) {
@@ -150,8 +146,6 @@ public class ServerModel implements ModelInterface {
         return inCourtCols && outsideCourtRows;
     }
 
-    // ── Colisiones ───────────────────────────────────────────────────────
-
     private Player findPlayerAtLocation(Location loc) {
         return players.stream()
                 .filter(p -> loc.equals(p.getLocation()))
@@ -183,8 +177,6 @@ public class ServerModel implements ModelInterface {
         return MoveResult.rejected();
     }
 
-    // ── Llegada a la cancha ──────────────────────────────────────────────
-
     private MoveResult checkArrival(Player player) {
         if (player.getRole() != Role.ATTACKER)
             return MoveResult.moved();
@@ -205,8 +197,6 @@ public class ServerModel implements ModelInterface {
                 && loc.getRow() <= Utilities.COURT_ROW_END;
     }
 
-    // ── Spawn ────────────────────────────────────────────────────────────
-
     private void returnToSpawn(Player player) {
         player.setLocation(findFreeSpawn(player.getRole()));
     }
@@ -222,8 +212,6 @@ public class ServerModel implements ModelInterface {
         }
         return new Location(col, 0);
     }
-
-    // ── Cambio de rol ────────────────────────────────────────────────────
 
     private boolean checkRoleChange(Player player) {
         if (player.getProgressCount() < Utilities.ROLE_CHANGE_COUNT)
