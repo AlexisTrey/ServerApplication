@@ -18,7 +18,8 @@ public class AppConfig {
     private static void loadProperties() {
         try (InputStream in = AppConfig.class
                 .getClassLoader().getResourceAsStream(CONFIG_FILE)) {
-            if (in != null) props.load(in);
+            if (in != null)
+                props.load(in);
         } catch (IOException e) {
             System.err.println("Could not load config.properties, using defaults.");
         }
@@ -36,5 +37,6 @@ public class AppConfig {
                         String.valueOf(Utilities.DEFAULT_SPEED_MS)));
     }
 
-    private AppConfig() {}
+    private AppConfig() {
+    }
 }

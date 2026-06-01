@@ -16,11 +16,11 @@ import java.util.List;
 public class InfoPanel extends JPanel {
 
     private PresenterInterface presenter;
-    private JLabel             lblStatus;
-    private JTextArea          areaPlayers;
-    private JSpinner           spinnerSpeed;
+    private JLabel lblStatus;
+    private JTextArea areaPlayers;
+    private JSpinner spinnerSpeed;
     private CustomButton btnStart;
-    private CustomButton       btnEnd;
+    private CustomButton btnEnd;
 
     public InfoPanel() {
         setPreferredSize(new Dimension(
@@ -66,17 +66,26 @@ public class InfoPanel extends JPanel {
     private void addControlsSection() {
         add(buildSpeedRow());
         add(Box.createVerticalStrut(8));
+
         btnStart = new CustomButton("Iniciar partida")
                 .onClick(e -> { if (presenter != null) presenter.onStartGame(); });
-        btnEnd   = new CustomButton("Finalizar partida")
+        btnEnd = new CustomButton("Finalizar partida")
                 .onClick(e -> { if (presenter != null) presenter.onEndGame(); });
         btnEnd.setEnabled(false);
-        JPanel btnPanel = buildRow();
-        btnPanel.add(btnStart);
-        add(btnPanel);
-        JPanel endPanel = buildRow();
-        endPanel.add(btnEnd);
-        add(endPanel);
+
+        Dimension btnSize = new Dimension(Utilities.INFO_PANEL_WIDTH - 20, 38);
+        btnStart.setMaximumSize(btnSize);
+        btnStart.setPreferredSize(btnSize);
+        btnStart.setAlignmentX(CENTER_ALIGNMENT);
+
+        btnEnd.setMaximumSize(btnSize);
+        btnEnd.setPreferredSize(btnSize);
+        btnEnd.setAlignmentX(CENTER_ALIGNMENT);
+
+        add(Box.createVerticalStrut(6));
+        add(btnStart);
+        add(Box.createVerticalStrut(6));
+        add(btnEnd);
     }
 
     private JPanel buildSpeedRow() {
@@ -101,12 +110,13 @@ public class InfoPanel extends JPanel {
         }
         StringBuilder sb = new StringBuilder();
         for (Player p : players) {
-            sb.append("P").append(p.getShortId())
-                    .append(" [").append(p.getStudentCode()).append("]");
+            sb.append(p.getStudentCode());
             if (p.getRole() != null) {
                 String roleLabel = (p.getRole() == Role.ATTACKER) ? "ATK" : "DEF";
                 sb.append("  ").append(roleLabel)
                         .append("  Pts:").append(p.getScore());
+            } else {
+                sb.append("  (esperando inicio)");
             }
             sb.append("\n");
         }
@@ -117,7 +127,7 @@ public class InfoPanel extends JPanel {
         lblStatus.setText(status.name());
         lblStatus.setForeground(statusColor(status));
         btnStart.setEnabled(status == GameStatus.WAITING);
-        btnEnd.setEnabled(status == GameStatus.IN_PROGRESS);
+        btnEnd.setEnabled(status == GameStatus.IN_GAME);
     }
 
     public void setPresenter(PresenterInterface presenter) {
@@ -126,9 +136,9 @@ public class InfoPanel extends JPanel {
 
     private Color statusColor(GameStatus status) {
         return switch (status) {
-            case WAITING     -> new Color(200, 130, 0);
-            case IN_PROGRESS -> new Color(0, 140, 0);
-            case FINISHED    -> new Color(160, 0, 0);
+            case WAITING -> new Color(200, 130, 0);
+            case IN_GAME -> new Color(0, 140, 0);
+            case CLOSED -> new Color(160, 0, 0);
         };
     }
 

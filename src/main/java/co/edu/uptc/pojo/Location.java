@@ -31,7 +31,8 @@ public class Location {
 
     @Override
     public boolean equals(Object o) {
-        if (!(o instanceof Location other)) return false;
+        if (!(o instanceof Location other))
+            return false;
         return col == other.col && row == other.row;
     }
 

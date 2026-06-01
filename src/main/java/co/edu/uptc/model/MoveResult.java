@@ -1,19 +1,21 @@
 package co.edu.uptc.model;
 
 public class MoveResult {
-    public enum Type { MOVED, REJECTED, BLOCK, GOAL }
+    public enum Type {
+        MOVED, REJECTED, BLOCK, GOAL
+    }
 
-    private final Type    type;
-    private final String  attackerCode;
-    private final String  defenderCode;
+    private final Type type;
+    private final String attackerCode;
+    private final String defenderCode;
     private final boolean roleChanged;
 
     private MoveResult(Type type, String attackerCode,
-                       String defenderCode, boolean roleChanged) {
-        this.type         = type;
+            String defenderCode, boolean roleChanged) {
+        this.type = type;
         this.attackerCode = attackerCode;
         this.defenderCode = defenderCode;
-        this.roleChanged  = roleChanged;
+        this.roleChanged = roleChanged;
     }
 
     public static MoveResult moved() {
@@ -25,7 +27,7 @@ public class MoveResult {
     }
 
     public static MoveResult block(String attackerCode, String defenderCode,
-                                   boolean defenderRoleChanged) {
+            boolean defenderRoleChanged) {
         return new MoveResult(Type.BLOCK, attackerCode, defenderCode, defenderRoleChanged);
     }
 
@@ -33,13 +35,35 @@ public class MoveResult {
         return new MoveResult(Type.GOAL, attackerCode, null, attackerRoleChanged);
     }
 
-    public boolean isBlock()      { return type == Type.BLOCK;    }
-    public boolean isGoal()       { return type == Type.GOAL;     }
-    public boolean isMoved()      { return type == Type.MOVED;    }
-    public boolean isRejected()   { return type == Type.REJECTED; }
-    public boolean isRoleChanged(){ return roleChanged;           }
+    public boolean isBlock() {
+        return type == Type.BLOCK;
+    }
 
-    public String getAttackerCode() { return attackerCode; }
-    public String getDefenderCode() { return defenderCode; }
-    public Type   getType()         { return type;         }
+    public boolean isGoal() {
+        return type == Type.GOAL;
+    }
+
+    public boolean isMoved() {
+        return type == Type.MOVED;
+    }
+
+    public boolean isRejected() {
+        return type == Type.REJECTED;
+    }
+
+    public boolean isRoleChanged() {
+        return roleChanged;
+    }
+
+    public String getAttackerCode() {
+        return attackerCode;
+    }
+
+    public String getDefenderCode() {
+        return defenderCode;
+    }
+
+    public Type getType() {
+        return type;
+    }
 }

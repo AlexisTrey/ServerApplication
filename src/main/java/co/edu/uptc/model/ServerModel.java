@@ -10,10 +10,9 @@ import java.util.Collections;
 import java.util.List;
 
 public class ServerModel implements ModelInterface {
-    private final List<Player> players =
-            Collections.synchronizedList(new ArrayList<>());
-    private GameStatus status  = GameStatus.WAITING;
-    private int        speedMs = Utilities.DEFAULT_SPEED_MS;
+    private final List<Player> players = Collections.synchronizedList(new ArrayList<>());
+    private GameStatus status = GameStatus.WAITING;
+    private int speedMs = Utilities.DEFAULT_SPEED_MS;
 
     @Override
     public void addPlayer(Player player) {
@@ -27,24 +26,27 @@ public class ServerModel implements ModelInterface {
 
     @Override
     public void startGame() {
-        status = GameStatus.IN_PROGRESS;
+        status = GameStatus.IN_GAME;
         assignRolesAndPositions();
     }
 
     @Override
     public void endGame() {
-        status = GameStatus.FINISHED;
+        status = GameStatus.CLOSED;
     }
 
     @Override
-    public MoveResult processMove(String studentCode, Direction direction) {
+    public MoveResult processMove(String studentCode, Movement movement) {
         Player player = findPlayer(studentCode);
-        if (player == null) return MoveResult.rejected();
+        if (player == null)
+            return MoveResult.rejected();
 
-        Location target = computeTarget(player.getLocation(), direction);
+        Location target = computeTarget(player.getLocation(), movement);
 
-        if (!isInsideBounds(target))               return MoveResult.rejected();
-        if (isProtectedZoneViolation(player, target)) return MoveResult.rejected();
+        if (!isInsideBounds(target))
+            return MoveResult.rejected();
+        if (isProtectedZoneViolation(player, target))
+            return MoveResult.rejected();
 
         Player occupant = findPlayerAtLocation(target);
         if (occupant != null) {
@@ -56,10 +58,14 @@ public class ServerModel implements ModelInterface {
     }
 
     @Override
-    public void setSpeed(int speedMs) { this.speedMs = speedMs; }
+    public void setSpeed(int speedMs) {
+        this.speedMs = speedMs;
+    }
 
     @Override
-    public int getSpeed() { return speedMs; }
+    public int getSpeed() {
+        return speedMs;
+    }
 
     @Override
     public List<Player> getPlayers() {
@@ -67,7 +73,9 @@ public class ServerModel implements ModelInterface {
     }
 
     @Override
-    public GameStatus getStatus() { return status; }
+    public GameStatus getStatus() {
+        return status;
+    }
 
     @Override
     public Player findPlayer(String studentCode) {
@@ -83,13 +91,16 @@ public class ServerModel implements ModelInterface {
             for (Player p : players) {
                 state.add(new PlayerDto(
                         p.getStudentCode(),
-                        p.getRole().name(),
-                        p.getLocation().getCol(),
-                        p.getLocation().getRow()));
+                        p.getRole() != null ? p.getRole().name() : null,
+                        p.getLocation() != null ? p.getLocation().getCol() : 0,
+                        p.getLocation() != null ? p.getLocation().getRow() : 0,
+                        p.getScore()));
             }
         }
         return state;
     }
+
+    // ── Inicialización ───────────────────────────────────────────────────
 
     private void assignRolesAndPositions() {
         synchronized (players) {
@@ -102,11 +113,13 @@ public class ServerModel implements ModelInterface {
         }
     }
 
-    private Location computeTarget(Location loc, Direction dir) {
-        return switch (dir) {
-            case UP    -> new Location(loc.getCol(),     loc.getRow() - 1);
-            case DOWN  -> new Location(loc.getCol(),     loc.getRow() + 1);
-            case LEFT  -> new Location(loc.getCol() - 1, loc.getRow());
+    // ── Movimiento ───────────────────────────────────────────────────────
+
+    private Location computeTarget(Location loc, Movement mov) {
+        return switch (mov) {
+            case UP -> new Location(loc.getCol(), loc.getRow() - 1);
+            case DOWN -> new Location(loc.getCol(), loc.getRow() + 1);
+            case LEFT -> new Location(loc.getCol() - 1, loc.getRow());
             case RIGHT -> new Location(loc.getCol() + 1, loc.getRow());
         };
     }
@@ -117,8 +130,10 @@ public class ServerModel implements ModelInterface {
     }
 
     private boolean isProtectedZoneViolation(Player player, Location target) {
-        if (player.getRole() == Role.DEFENDER && isAttackerSpawn(target))  return true;
-        if (player.getRole() == Role.ATTACKER && isAboveBelowCourt(target)) return true;
+        if (player.getRole() == Role.DEFENDER && isAttackerSpawn(target))
+            return true;
+        if (player.getRole() == Role.ATTACKER && isAboveBelowCourt(target))
+            return true;
         return false;
     }
 
@@ -128,12 +143,14 @@ public class ServerModel implements ModelInterface {
     }
 
     private boolean isAboveBelowCourt(Location loc) {
-        boolean inCourtCols    = loc.getCol() >= Utilities.COURT_COL_START
+        boolean inCourtCols = loc.getCol() >= Utilities.COURT_COL_START
                 && loc.getCol() <= Utilities.COURT_COL_END;
         boolean outsideCourtRows = loc.getRow() < Utilities.COURT_ROW_START
                 || loc.getRow() > Utilities.COURT_ROW_END;
         return inCourtCols && outsideCourtRows;
     }
+
+    // ── Colisiones ───────────────────────────────────────────────────────
 
     private Player findPlayerAtLocation(Location loc) {
         return players.stream()
@@ -142,6 +159,7 @@ public class ServerModel implements ModelInterface {
     }
 
     private MoveResult handleCollision(Player mover, Player occupant) {
+        // Atacante se mueve hacia defensor → bloqueo
         if (mover.getRole() == Role.ATTACKER && occupant.getRole() == Role.DEFENDER) {
             returnToSpawn(mover);
             occupant.setScore(occupant.getScore() + 1);
@@ -151,12 +169,27 @@ public class ServerModel implements ModelInterface {
                     occupant.getStudentCode(),
                     roleChanged);
         }
+        // Defensor se mueve hacia atacante → también es bloqueo
+        if (mover.getRole() == Role.DEFENDER && occupant.getRole() == Role.ATTACKER) {
+            returnToSpawn(occupant);
+            mover.setScore(mover.getScore() + 1);
+            mover.setProgressCount(mover.getProgressCount() + 1);
+            boolean roleChanged = checkRoleChange(mover);
+            return MoveResult.block(occupant.getStudentCode(),
+                    mover.getStudentCode(),
+                    roleChanged);
+        }
+        // Mismo rol → rechazar silenciosamente
         return MoveResult.rejected();
     }
 
+    // ── Llegada a la cancha ──────────────────────────────────────────────
+
     private MoveResult checkArrival(Player player) {
-        if (player.getRole() != Role.ATTACKER)       return MoveResult.moved();
-        if (!isInsideCourt(player.getLocation()))    return MoveResult.moved();
+        if (player.getRole() != Role.ATTACKER)
+            return MoveResult.moved();
+        if (!isInsideCourt(player.getLocation()))
+            return MoveResult.moved();
 
         player.setScore(player.getScore() + 1);
         player.setProgressCount(player.getProgressCount() + 1);
@@ -172,6 +205,8 @@ public class ServerModel implements ModelInterface {
                 && loc.getRow() <= Utilities.COURT_ROW_END;
     }
 
+    // ── Spawn ────────────────────────────────────────────────────────────
+
     private void returnToSpawn(Player player) {
         player.setLocation(findFreeSpawn(player.getRole()));
     }
@@ -182,15 +217,20 @@ public class ServerModel implements ModelInterface {
                 : Utilities.DEF_SPAWN_COL;
         for (int row = 0; row < Utilities.GRID_ROWS; row++) {
             Location candidate = new Location(col, row);
-            if (findPlayerAtLocation(candidate) == null) return candidate;
+            if (findPlayerAtLocation(candidate) == null)
+                return candidate;
         }
         return new Location(col, 0);
     }
 
+    // ── Cambio de rol ────────────────────────────────────────────────────
+
     private boolean checkRoleChange(Player player) {
-        if (player.getProgressCount() < Utilities.ROLE_CHANGE_COUNT) return false;
+        if (player.getProgressCount() < Utilities.ROLE_CHANGE_COUNT)
+            return false;
         Role newRole = (player.getRole() == Role.ATTACKER)
-                ? Role.DEFENDER : Role.ATTACKER;
+                ? Role.DEFENDER
+                : Role.ATTACKER;
         player.setRole(newRole);
         player.setProgressCount(0);
         player.setLocation(findFreeSpawn(newRole));

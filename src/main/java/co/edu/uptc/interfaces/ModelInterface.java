@@ -2,7 +2,7 @@ package co.edu.uptc.interfaces;
 
 import co.edu.uptc.dto.PlayerDto;
 import co.edu.uptc.model.MoveResult;
-import co.edu.uptc.pojo.Direction;
+import co.edu.uptc.pojo.Movement;
 import co.edu.uptc.pojo.GameStatus;
 import co.edu.uptc.pojo.Player;
 
@@ -12,7 +12,7 @@ public interface ModelInterface {
 
     void addPlayer(Player player);
     void removePlayer(String studentCode);
-    MoveResult processMove(String studentCode, Direction direction);
+    MoveResult processMove(String studentCode, Movement movement);
     void startGame();
     void endGame();
     void setSpeed(int speedMs);

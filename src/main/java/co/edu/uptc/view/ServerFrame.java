@@ -19,8 +19,8 @@ public class ServerFrame extends JFrame implements ViewInterface {
 
     private static ServerFrame instance;
     private PresenterInterface presenter;
-    private GamePanel          gamePanel;
-    private InfoPanel          infoPanel;
+    private GamePanel gamePanel;
+    private InfoPanel infoPanel;
 
     private ServerFrame() {
         initFrame();
@@ -28,7 +28,8 @@ public class ServerFrame extends JFrame implements ViewInterface {
     }
 
     public static ServerFrame getInstance() {
-        if (instance == null) instance = new ServerFrame();
+        if (instance == null)
+            instance = new ServerFrame();
         return instance;
     }
 
@@ -48,7 +49,7 @@ public class ServerFrame extends JFrame implements ViewInterface {
     }
 
     private void addMenuBar() {
-        JMenuBar bar  = new JMenuBar();
+        JMenuBar bar = new JMenuBar();
         bar.add(buildGameMenu());
         bar.add(buildThemeMenu());
         bar.add(buildAboutMenu());
@@ -58,11 +59,17 @@ public class ServerFrame extends JFrame implements ViewInterface {
     private JMenu buildGameMenu() {
         JMenu menu = new JMenu("Juego");
         JMenuItem itemStart = new JMenuItem("Iniciar partida");
-        JMenuItem itemEnd   = new JMenuItem("Finalizar partida");
-        JMenuItem itemExit  = new JMenuItem("Salir");
-        itemStart.addActionListener(e -> { if (presenter != null) presenter.onStartGame(); });
-        itemEnd.addActionListener(e   -> { if (presenter != null) presenter.onEndGame(); });
-        itemExit.addActionListener(e  -> System.exit(0));
+        JMenuItem itemEnd = new JMenuItem("Finalizar partida");
+        JMenuItem itemExit = new JMenuItem("Salir");
+        itemStart.addActionListener(e -> {
+            if (presenter != null)
+                presenter.onStartGame();
+        });
+        itemEnd.addActionListener(e -> {
+            if (presenter != null)
+                presenter.onEndGame();
+        });
+        itemExit.addActionListener(e -> System.exit(0));
         menu.add(itemStart);
         menu.add(itemEnd);
         menu.addSeparator();
@@ -71,11 +78,11 @@ public class ServerFrame extends JFrame implements ViewInterface {
     }
 
     private JMenu buildThemeMenu() {
-        JMenu menu  = new JMenu("Tema");
+        JMenu menu = new JMenu("Tema");
         JMenuItem light = new JMenuItem("Claro");
-        JMenuItem dark  = new JMenuItem("Oscuro");
+        JMenuItem dark = new JMenuItem("Oscuro");
         light.addActionListener(e -> ThemeManager.applyByKey(ThemeManager.LIGHT));
-        dark.addActionListener(e  -> ThemeManager.applyByKey(ThemeManager.DARK));
+        dark.addActionListener(e -> ThemeManager.applyByKey(ThemeManager.DARK));
         menu.add(light);
         menu.add(dark);
         return menu;
@@ -101,9 +108,9 @@ public class ServerFrame extends JFrame implements ViewInterface {
 
     private void showAbout() {
         Map<String, String> info = new LinkedHashMap<>();
-        info.put("Proyecto:",  "Combat Game");
-        info.put("Versión:",   "1.0.0");
-        info.put("Lenguaje:",  "Java 21");
+        info.put("Proyecto:", "Combat Game");
+        info.put("Versión:", "1.0.0");
+        info.put("Lenguaje:", "Java 21");
         new AboutDialog(this, "Servidor — Combat Game", info).setVisible(true);
     }
 

@@ -6,10 +6,10 @@ import java.util.List;
 
 public class ClientManager {
 
-    private static final List<ClientHandler> clients =
-            Collections.synchronizedList(new ArrayList<>());
+    private static final List<ClientHandler> clients = Collections.synchronizedList(new ArrayList<>());
 
-    private ClientManager() {}
+    private ClientManager() {
+    }
 
     public static synchronized void addClient(ClientHandler client) {
         clients.add(client);

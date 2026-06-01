@@ -10,14 +10,14 @@ import java.nio.charset.StandardCharsets;
 
 public class ClientHandler implements Runnable {
 
-    private final Socket             socket;
+    private final Socket socket;
     private final PresenterInterface presenter;
-    private PrintWriter              writer;
-    private String                   studentCode;
-    private boolean                  disconnected = false;
+    private PrintWriter writer;
+    private String studentCode;
+    private boolean disconnected = false;
 
     public ClientHandler(Socket socket, PresenterInterface presenter) {
-        this.socket    = socket;
+        this.socket = socket;
         this.presenter = presenter;
     }
 
@@ -40,8 +40,8 @@ public class ClientHandler implements Runnable {
     private void handleMessage(String json) {
         String type = MessageParser.getType(json);
         switch (type) {
-            case Protocol.CONNECT    -> handleConnect(json);
-            case Protocol.MOVE       -> handleMove(json);
+            case Protocol.CONNECT -> handleConnect(json);
+            case Protocol.MOVE -> handleMove(json);
             case Protocol.DISCONNECT -> handleDisconnect();
         }
     }
@@ -52,8 +52,8 @@ public class ClientHandler implements Runnable {
     }
 
     private void handleMove(String json) {
-        String direction = MessageParser.getString(json, "direction");
-        presenter.onPlayerMove(studentCode, direction);
+        String movement = MessageParser.getString(json, "movement"); // ← "movement"
+        presenter.onPlayerMove(studentCode, movement);
     }
 
     private void handleDisconnect() {
@@ -67,14 +67,20 @@ public class ClientHandler implements Runnable {
             disconnected = true;
             presenter.onPlayerDisconnect(studentCode);
         }
-        try { socket.close(); } catch (IOException ignored) {}
+        try {
+            socket.close();
+        } catch (IOException ignored) {
+        }
     }
 
     public void sendMessage(String json) {
-        if (writer != null) writer.println(json);
+        if (writer != null)
+            writer.println(json);
     }
 
-    public String getStudentCode() { return studentCode; }
+    public String getStudentCode() {
+        return studentCode;
+    }
 
     private BufferedReader openReader() throws IOException {
         return new BufferedReader(

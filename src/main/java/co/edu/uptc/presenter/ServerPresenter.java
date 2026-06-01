@@ -6,22 +6,30 @@ import co.edu.uptc.interfaces.PresenterInterface;
 import co.edu.uptc.interfaces.ViewInterface;
 import co.edu.uptc.model.MoveResult;
 import co.edu.uptc.network.protocol.MessageParser;
-import co.edu.uptc.network.protocol.Protocol;
 import co.edu.uptc.network.server.ClientHandler;
 import co.edu.uptc.network.server.ClientManager;
-import co.edu.uptc.pojo.Direction;
+import co.edu.uptc.pojo.GameOverReason;
+import co.edu.uptc.pojo.Movement;
 import co.edu.uptc.pojo.GameStatus;
 import co.edu.uptc.pojo.Player;
 import co.edu.uptc.util.Utilities;
 
 import javax.swing.*;
+import java.util.List;
 
 public class ServerPresenter implements PresenterInterface {
     private ModelInterface model;
-    private ViewInterface  view;
+    private ViewInterface view;
 
-    @Override public void setModel(ModelInterface model) { this.model = model; }
-    @Override public void setView(ViewInterface view)    { this.view  = view;  }
+    @Override
+    public void setModel(ModelInterface model) {
+        this.model = model;
+    }
+
+    @Override
+    public void setView(ViewInterface view) {
+        this.view = view;
+    }
 
     @Override
     public void onStartGame() {
@@ -36,7 +44,7 @@ public class ServerPresenter implements PresenterInterface {
     public void onEndGame() {
         model.endGame();
         ClientManager.broadcast(MessageParser.toJson(
-                new GameEndDto(Protocol.REASON_SERVER_DECISION)));
+                new GameEndDto(GameOverReason.SERVER_DECISION.name())));
         refreshView();
     }
 
@@ -73,42 +81,51 @@ public class ServerPresenter implements PresenterInterface {
     }
 
     @Override
-    public void onPlayerMove(String studentCode, String direction) {
-        if (model.getStatus() != GameStatus.IN_PROGRESS) return;
+    public void onPlayerMove(String studentCode, String movement) {
+        if (model.getStatus() != GameStatus.IN_GAME)
+            return;
 
-        Direction  dir    = Direction.valueOf(direction);
-        MoveResult result = model.processMove(studentCode, dir);
+        Movement mov = Movement.valueOf(movement);
+        MoveResult result = model.processMove(studentCode, mov);
 
         if (result.isBlock()) {
+            // 1. BLOCK → a todos
             ClientManager.broadcast(MessageParser.toJson(
-                    new BlockDto(result.getDefenderCode(), result.getAttackerCode())));
+                    new BlockDto(result.getDefenderCode(),
+                            result.getAttackerCode())));
 
+            // 2. SCORE_UPDATE → al defensor
             Player defender = model.findPlayer(result.getDefenderCode());
             if (defender != null) {
-                ClientManager.sendTo(defender.getStudentCode(), MessageParser.toJson(
-                        new ScoreUpdateDto(defender.getStudentCode(),
+                ClientManager.sendTo(defender.getStudentCode(),
+                        MessageParser.toJson(new ScoreUpdateDto(
+                                defender.getStudentCode(),
                                 defender.getScore(),
                                 defender.getRole().name())));
-            }
 
-            if (result.isRoleChanged() && defender != null) {
-                PositionDto pos = new PositionDto(
-                        defender.getLocation().getCol(),
-                        defender.getLocation().getRow());
-                ClientManager.broadcast(MessageParser.toJson(
-                        new RoleChangeDto(defender.getStudentCode(),
-                                defender.getRole().name(), pos)));
+                // 3. ROLE_CHANGE → a todos (si hubo cambio)
+                if (result.isRoleChanged()) {
+                    PositionDto pos = new PositionDto(
+                            defender.getLocation().getCol(),
+                            defender.getLocation().getRow());
+                    ClientManager.broadcast(MessageParser.toJson(
+                            new RoleChangeDto(defender.getStudentCode(),
+                                    defender.getRole().name(), pos)));
+                }
             }
         }
 
         if (result.isGoal()) {
+            // 1. SCORE_UPDATE → al atacante
             Player attacker = model.findPlayer(result.getAttackerCode());
             if (attacker != null) {
-                ClientManager.sendTo(attacker.getStudentCode(), MessageParser.toJson(
-                        new ScoreUpdateDto(attacker.getStudentCode(),
+                ClientManager.sendTo(attacker.getStudentCode(),
+                        MessageParser.toJson(new ScoreUpdateDto(
+                                attacker.getStudentCode(),
                                 attacker.getScore(),
                                 attacker.getRole().name())));
 
+                // 2. ROLE_CHANGE → a todos (si hubo cambio)
                 if (result.isRoleChanged()) {
                     PositionDto pos = new PositionDto(
                             attacker.getLocation().getCol(),
@@ -120,13 +137,20 @@ public class ServerPresenter implements PresenterInterface {
             }
         }
 
-        for (Player p : model.getPlayers()) {
-            if (p.getScore() >= Utilities.MAX_SCORE) {
-                ClientManager.broadcast(MessageParser.toJson(
-                        new PlayerDoneDto(p.getStudentCode())));
-            }
+        // PLAYER_DONE si algún jugador llegó a 10 puntos
+        List<String> finishedPlayers = model.getPlayers().stream()
+                .filter(p -> p.getScore() >= Utilities.MAX_SCORE)
+                .map(Player::getStudentCode)
+                .toList();
+
+        for (String code : finishedPlayers) {
+            ClientManager.broadcast(MessageParser.toJson(
+                    new PlayerDoneDto(code)));
+
+            model.removePlayer(code);
         }
 
+        // GAME_STATE siempre al final
         broadcastGameState();
         checkAllDone();
         refreshView();
@@ -147,38 +171,35 @@ public class ServerPresenter implements PresenterInterface {
                 Utilities.GRID_COLS,
                 Utilities.GRID_ROWS,
                 Utilities.COURT_ROW_END - Utilities.COURT_ROW_START + 1);
-        String json = MessageParser.toJson(
-                new GameStartDto(model.getSpeed(), area, Protocol.COURT_SIDE_LEFT));
-        ClientManager.broadcast(json);
+        ClientManager.broadcast(MessageParser.toJson(
+                new GameStartDto(model.getSpeed(), area)));
     }
 
     private void broadcastRoleAssignments() {
         for (Player p : model.getPlayers()) {
             PositionDto pos = new PositionDto(
-                    p.getLocation().getCol(), p.getLocation().getRow());
-            String json = MessageParser.toJson(
-                    new RoleAssignDto(p.getRole().name(), pos));
-            ClientManager.sendTo(p.getStudentCode(), json);
+                    p.getLocation().getCol(),
+                    p.getLocation().getRow());
+            ClientManager.sendTo(p.getStudentCode(),
+                    MessageParser.toJson(
+                            new RoleAssignDto(p.getRole().name(), pos)));
         }
     }
 
     private void broadcastGameState() {
-        String json = MessageParser.toJson(
-                new GameStateDto(model.buildGameState()));
-
-        System.out.println("GAME_STATE -> " + json);
-
-        ClientManager.broadcast(json);
+        ClientManager.broadcast(MessageParser.toJson(
+                new GameStateDto(model.buildGameState())));
     }
 
     private void checkAllDone() {
-        if (model.getPlayers().isEmpty()) return;
+        if (model.getPlayers().isEmpty())
+            return;
         boolean allDone = model.getPlayers().stream()
                 .allMatch(p -> p.getScore() >= Utilities.MAX_SCORE);
         if (allDone) {
             model.endGame();
             ClientManager.broadcast(MessageParser.toJson(
-                    new GameEndDto(Protocol.REASON_ALL_DONE)));
+                    new GameEndDto(GameOverReason.ALL_DONE.name())));
             refreshView();
         }
     }

@@ -71,7 +71,7 @@ public class GamePanel extends JPanel {
 
     private void drawCourt(Graphics2D g) {
         int x = Utilities.COURT_COL_START * Utilities.CELL_SIZE;
-        int y = Utilities.COURT_ROW_START  * Utilities.CELL_SIZE;
+        int y = Utilities.COURT_ROW_START * Utilities.CELL_SIZE;
         int w = (Utilities.COURT_COL_END - Utilities.COURT_COL_START + 1)
                 * Utilities.CELL_SIZE;
         int h = (Utilities.COURT_ROW_END - Utilities.COURT_ROW_START + 1)
@@ -86,8 +86,8 @@ public class GamePanel extends JPanel {
     private void drawCourtLabel(Graphics2D g, int x, int y, int w, int h) {
         g.setColor(Color.WHITE);
         g.setFont(new Font("Segoe UI", Font.BOLD, 12));
-        FontMetrics fm   = g.getFontMetrics();
-        String      text = "GOAL";
+        FontMetrics fm = g.getFontMetrics();
+        String text = "GOAL";
         g.drawString(text, x + (w - fm.stringWidth(text)) / 2,
                 y + (h + fm.getAscent()) / 2 - 4);
     }
@@ -106,7 +106,8 @@ public class GamePanel extends JPanel {
 
     private void drawPlayers(Graphics2D g) {
         synchronized (this) {
-            for (PlayerDto p : players) drawPlayer(g, p);
+            for (PlayerDto p : players)
+                drawPlayer(g, p);
         }
     }
 
@@ -117,8 +118,8 @@ public class GamePanel extends JPanel {
                 ? Utilities.COLOR_ATTACKER
                 : Utilities.COLOR_DEFENDER;
 
-        int px   = p.getX() * Utilities.CELL_SIZE + 2;
-        int py   = p.getY() * Utilities.CELL_SIZE + 2;
+        int px = p.getX() * Utilities.CELL_SIZE + 2;
+        int py = p.getY() * Utilities.CELL_SIZE + 2;
         int size = Utilities.CELL_SIZE - 4;
 
         g.setColor(color);
@@ -133,10 +134,10 @@ public class GamePanel extends JPanel {
     private void drawPlayerLabel(Graphics2D g, String code, int px, int py, int size) {
         g.setColor(Color.WHITE);
         g.setFont(new Font("Segoe UI", Font.BOLD, 10));
-        FontMetrics fm    = g.getFontMetrics();
-        String      label = "P" + code;
-        int         lx    = px + (size - fm.stringWidth(label)) / 2;
-        int         ly    = py + (size + fm.getAscent()) / 2 - 2;
+        FontMetrics fm = g.getFontMetrics();
+        String label = "P" + code;
+        int lx = px + (size - fm.stringWidth(label)) / 2;
+        int ly = py + (size + fm.getAscent()) / 2 - 2;
         g.drawString(label, lx, ly);
     }
 }

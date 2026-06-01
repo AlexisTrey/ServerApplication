@@ -13,9 +13,9 @@ public class Player {
     }
 
     public Player(String studentCode, int shortId) {
-        this.studentCode   = studentCode;
-        this.shortId       = shortId;
-        this.score         = 0;
+        this.studentCode = studentCode;
+        this.shortId = shortId;
+        this.score = 0;
         this.progressCount = 0;
     }
 
