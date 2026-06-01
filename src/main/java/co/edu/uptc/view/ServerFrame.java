@@ -109,9 +109,12 @@ public class ServerFrame extends JFrame implements ViewInterface {
     private void showAbout() {
         Map<String, String> info = new LinkedHashMap<>();
         info.put("Proyecto:", "Combat Game");
+        info.put("Autor:", "Yulian Alexis Tobar Rios");
         info.put("Versión:", "1.0.0");
-        info.put("Lenguaje:", "Java 21");
-        new AboutDialog(this, "Servidor — Combat Game", info).setVisible(true);
+        info.put("Materia:", "Programación III");
+        info.put("Arquitectura:", "Cliente - Servidor");
+        info.put("Tecnología:", "Java + Swing + Gson");
+        new AboutDialog(this, "Combat Game", info).setVisible(true);
     }
 
     @Override
